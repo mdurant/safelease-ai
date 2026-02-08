@@ -1,0 +1,72 @@
+# Arquitectura separada: Django y FastAPI como procesos distintos.
+# Se comunican por HTTP interno (httpx) usando DJANGO_INTERNAL_URL / FASTAPI_INTERNAL_URL.
+
+services:
+  db:
+    image: postgres:16
+    container_name: safelease_pg
+    environment:
+      POSTGRES_DB: safelease
+      POSTGRES_USER: safelease
+      POSTGRES_PASSWORD: safelease
+    ports:
+      - "5432:5432"
+    volumes:
+      - safelease_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safelease"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  django:
+    build:
+      context: ..
+      dockerfile: ../Dockerfile
+    container_name: safelease_django
+    working_dir: /app
+    command: python backend/django_app/manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only}
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,django
+      DJANGO_INTERNAL_URL: http://django:8000
+      FASTAPI_INTERNAL_URL: http://fastapi:8001
+      DB_NAME: safelease
+      DB_USER: safelease
+      DB_PASSWORD: safelease
+      DB_HOST: db
+      DB_PORT: "5432"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  fastapi:
+    build:
+      context: ..
+      dockerfile: ../Dockerfile
+    container_name: safelease_fastapi
+    working_dir: /app/backend
+    command: uvicorn fastapi_app.main:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      FASTAPI_DEBUG: "1"
+      DJANGO_INTERNAL_URL: http://django:8000
+      FASTAPI_INTERNAL_URL: http://fastapi:8001
+      DB_NAME: safelease
+      DB_USER: safelease
+      DB_PASSWORD: safelease
+      DB_HOST: db
+      DB_PORT: "5432"
+    env_file:
+      - .env
+    depends_on:
+      - django
+
+volumes:
+  safelease_pg_data:
