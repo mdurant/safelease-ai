@@ -1,6 +1,6 @@
 # SafeLease AI — Estrategia de Negocio
 
-Documento de referencia que describe los **módulos de negocio y funcionalidad** del producto. Sirve como hoja de ruta para luego detallar **paso a paso** cada área de forma técnica (diseño, APIs, modelos de datos, flujos).
+Documento de referencia que describe los **módulos de negocio y funcionalidad** del producto. Sirve como hoja de ruta para luego detallar **paso a paso** cada área de forma técnica (diseño - React/Angular, APIs, modelos de datos, flujos).
 
 ---
 
@@ -26,7 +26,7 @@ Documento de referencia que describe los **módulos de negocio y funcionalidad**
 
 **Responsabilidad**
 
-Registro, login, recuperación de contraseña, verificación email/teléfono (step-up).  
+Registro, validación de cuenta via email, validación OTP 6 Digitos post validación email, login, recuperación de contraseña, verificación email/teléfono (step-up).  
 Roles: **owner** (publica), **viewer** (navega), **admin** (moderación/operación).
 
 **Submódulos**

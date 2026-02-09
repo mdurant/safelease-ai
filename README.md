@@ -24,7 +24,8 @@ Probado en **macOS** (Apple Silicon M3, 24 GB RAM). Equivalente en Intel o Linux
 | Requisito | Versión / Nota |
 |-----------|-----------------|
 | **Python** | 3.12+ (recomendado: [pyenv](https://github.com/pyenv/pyenv) o instalación oficial) |
-| **PostgreSQL** | 16 (local o vía Docker) |
+| **Node.js** | 18+ LTS (para el frontend React) |
+| **PostgreSQL** | 14+ (local o vía Docker) |
 | **Docker** (opcional) | Para levantar solo la base de datos o todo el stack |
 | **RAM** | 24 GB suficiente; con Docker + Django + FastAPI + PostgreSQL ~2–3 GB en uso |
 
@@ -72,15 +73,13 @@ pip install -r requirements.txt
 
 ### 3. Variables de entorno
 
-Copia el ejemplo y ajusta si hace falta (claves, hosts, URLs internas):
+El archivo de configuración está en **`infra/.env`**. El backend (Django y FastAPI) carga variables desde la raíz `.env` y desde `infra/.env` (si solo usas uno, basta con `infra/.env`).
 
 ```bash
-cp .env.example .env
-# Opcional: también puedes usar infra/.env (el backend carga ambos)
 cp .env.example infra/.env
 ```
 
-En **desarrollo local** asegura al menos en `.env` o `infra/.env`:
+En **desarrollo local** asegura al menos en **`infra/.env`**:
 
 - `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=1`, `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1`
 - `DJANGO_INTERNAL_URL=http://127.0.0.1:8000`, `FASTAPI_INTERNAL_URL=http://127.0.0.1:8001`
@@ -98,17 +97,19 @@ cd ..
 
 **Opción B – PostgreSQL instalado en el sistema:**
 
-Crea usuario y base `safelease` y deja el servicio escuchando en `127.0.0.1:5432`. Usa los mismos valores que en `.env`.
+Crea usuario y base `safelease` y deja el servicio escuchando en `127.0.0.1:5432`. Usa los mismos valores que en `infra/.env`.
 
-### 5. Migraciones Django
+### 5. Migraciones Django y seed (módulo Auth)
 
 ```bash
 cd backend/django_app
+python manage.py makemigrations core   # solo si no existen migraciones de core
 python manage.py migrate
+python manage.py seed_auth             # roles + usuario demo (demo@safelease.local / password)
 cd ../..
 ```
 
-### 6. Levantar los dos servicios (dos terminales)
+### 6. Levantar backend (dos terminales)
 
 **Terminal 1 – Django (puerto 8000):**
 
@@ -126,11 +127,23 @@ source ../.venv/bin/activate
 uvicorn fastapi_app.main:app --reload --port 8001
 ```
 
-### 7. Comprobar que todo responde
+### 7. Levantar frontend (tercera terminal)
 
-- **Django**: [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/) (crear superusuario con `python manage.py createsuperuser` si hace falta)
-- **FastAPI**: [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs) (Swagger)
-- **Comunicación FastAPI → Django**: [http://127.0.0.1:8001/django-status](http://127.0.0.1:8001/django-status)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abre [http://localhost:5173](http://localhost:5173). Login de prueba: **demo@safelease.local** / **password**.
+
+### 8. Comprobar que todo responde
+
+- **Django**: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) | [Admin](http://127.0.0.1:8000/admin/) (crear superusuario con `python manage.py createsuperuser` si hace falta)
+- **FastAPI**: [http://127.0.0.1:8001/health](http://127.0.0.1:8001/health) | [Docs](http://127.0.0.1:8001/docs) | [Django status](http://127.0.0.1:8001/django-status)
+- **Frontend**: [http://localhost:5173](http://localhost:5173)
+
+**Guía detallada paso a paso (backend + frontend):** → [docs/AMBIENTE-LOCAL.md](docs/AMBIENTE-LOCAL.md)
 
 ---
 
@@ -147,14 +160,17 @@ Django y FastAPI corren como **procesos separados** y se comunican por **HTTP in
 ```
 safelease-ai/
 ├── backend/
-│   ├── django_app/          # Django (admin, ORM, API interna)
-│   ├── fastapi_app/         # FastAPI (API pública)
-│   └── shared/               # Config y clientes HTTP compartidos
+│   ├── django_app/          # Django (admin, ORM, API interna, core/auth)
+│   ├── fastapi_app/         # FastAPI (API pública, proxy auth)
+│   └── shared/              # Config y clientes HTTP compartidos
+├── frontend/                # React (Vite, TypeScript) — módulo Auth
 ├── docs/
-│   └── ARCHITECTURE.md       # Diseño y despliegue
+│   ├── AMBIENTE-LOCAL.md    # Paso a paso backend + frontend
+│   ├── ARCHITECTURE.md      # Diseño y despliegue
+│   └── MODULO-1-AUTH.md     # API y uso del módulo Autenticación
 ├── infra/
-│   ├── docker-compose.yml    # db + django + fastapi
-│   └── .env                  # Variables para compose y servicios
+│   ├── docker-compose.yml   # db + django + fastapi
+│   └── .env                 # Variables para compose y servicios
 ├── .env.example
 ├── requirements.txt
 └── README.md
